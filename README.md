@@ -1,41 +1,36 @@
 # Autobot
 
 A simple Telegram bot that fetches Java vacancies from HH.ru.
+The current implementation is written in Python using
+`python-telegram-bot`.
 
-## Building
+## Setup
 
-Use the included Gradle wrapper:
+Install dependencies with pip:
 
 ```bash
-./gradlew build
-./gradlew fatJar
+pip install -r requirements.txt
 ```
 
-The fat JAR will be located in `build/libs/app-1.0.jar`.
-
-## Running
-
-Set environment variables for your bot's credentials:
+Set environment variables for your bot's credentials (you can copy
+`.env.example` to `.env` and edit it):
 
 ```bash
 export BOT_TOKEN=your_token
 export BOT_USERNAME=your_username
 ```
 
-Then run the JAR:
+## Running
+
+Start the bot:
 
 ```bash
-java -jar build/libs/app-1.0.jar
+python bot.py
 ```
 
-You can also build a Docker image:
+To build the legacy Java version, use the Gradle wrapper:
 
 ```bash
-docker build -t autobot .
-```
-
-Run it with the same environment variables:
-
-```bash
-docker run -e BOT_TOKEN -e BOT_USERNAME autobot
+./gradlew build
+./gradlew fatJar
 ```
