@@ -1,0 +1,15 @@
+# Gradle build output
+.gradle/
+build/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# JAR files (keep Gradle wrapper)
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+

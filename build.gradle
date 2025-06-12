@@ -17,12 +17,12 @@ dependencies {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
 application {
-    mainClass = 'Main'
+    mainClass = 'org.example.autobot.Main'
 }
 
 tasks.register('fatJar', Jar) {
