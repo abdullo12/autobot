@@ -4,11 +4,16 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import io.github.cdimascio.dotenv.Dotenv;
+
 
 public class TelegramVacancyBot extends TelegramLongPollingBot {
 
-    private final String token = System.getenv("BOT_TOKEN");
-    private final String username = System.getenv("BOT_USERNAME");
+    Dotenv dotenv = Dotenv.configure().load();
+
+    private final String token = dotenv.get("BOT_TOKEN");
+    private final String username = dotenv.get("BOT_USERNAME");
+
 
     @Override
     public String getBotToken() {
