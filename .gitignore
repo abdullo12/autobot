@@ -13,3 +13,10 @@ build/
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
 
+# Python
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+
