@@ -1,0 +1,41 @@
+import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
+public class TelegramVacancyBot extends TelegramLongPollingBot {
+
+    @Override
+    public String getBotToken() {
+        return "1885942942:AAGzEmy7tdiA8fl-YxwaU_PEIPk3rbMSHK0"; // ⚠️ Вставь свой токен сюда
+    }
+
+    @Override
+    public String getBotUsername() {
+        return "@clever8_bot"; // ⚠️ Имя, которое ты задал у BotFather
+    }
+
+    @Override
+    public void onUpdateReceived(Update update) {
+        if (update.hasMessage() && update.getMessage().hasText()) {
+            String command = update.getMessage().getText();
+            long chatId = update.getMessage().getChatId();
+
+            if (command.equals("/start") || command.equals("/vacancies")) {
+                String response = HhFetcher.fetchAndFormatVacancies(); // метод, возвращающий вакансии с ссылками
+                sendMsg(chatId, response);
+            }
+        }
+    }
+
+    private void sendMsg(long chatId, String text) {
+        SendMessage msg = new SendMessage();
+        msg.setChatId(String.valueOf(chatId));
+        msg.setText(text);
+        try {
+            execute(msg);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+}
