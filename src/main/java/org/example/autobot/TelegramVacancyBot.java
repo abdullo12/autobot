@@ -17,7 +17,7 @@ public class TelegramVacancyBot extends TelegramLongPollingBot {
 
     @Value("${telegram.bot.username}")
     private String username;
-
+  
     @Autowired
     private HhFetcher hhFetcher;
 
