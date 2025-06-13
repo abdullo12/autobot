@@ -26,7 +26,7 @@ public class HhFetcher {
             } while (page == lastPage);
             lastPage = page;
 
-            String apiUrl = "https://api.hh.ru/vacancies?text=java" +
+            String apiUrl = "https://api.hh.ru/vacancies?text=python" +
                     "&per_page=5&page=" + page +
                     "&only_with_salary=true&search_field=name";
 

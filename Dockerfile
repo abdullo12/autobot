@@ -1,8 +1,5 @@
-FROM python:3.11-slim
-
+FROM eclipse-temurin:21-jdk
 WORKDIR /app
-COPY requirements.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-COPY bot.py bot.py
+COPY build/libs/autobot-1.0.jar app.jar
+CMD ["java", "-jar", "app.jar"]
 
-CMD ["python", "bot.py"]
