@@ -1,27 +1,63 @@
 # Autobot
 
-Autobot is a Spring Boot application that fetches Java vacancies from HH.ru and
-serves them via a Telegram bot.
+Autobot — это приложение Spring Boot, которое собирает вакансии Java с HH.ru и
+отправляет их через Telegram‑бота.
 
-## Setup
+## Настройка
 
-Set environment variables for your bot's credentials:
+Заполните файл `src/main/resources/application.properties` своими данными или
+передайте их через переменные окружения:
 
-```bash
-export BOT_TOKEN=your_token
-export BOT_USERNAME=your_username
+```properties
+telegram.bot.token=YOUR_TOKEN
+telegram.bot.username=@your_bot
 ```
 
-## Running
+Если переменные окружения `telegram.bot.token` и `telegram.bot.username`
+установлены, они имеют приоритет над значениями из файла.
 
-Start the bot using the Gradle wrapper:
+## Запуск
+
+Чтобы запустить бота, используйте Gradle Wrapper:
 
 ```bash
 ./gradlew bootRun
 ```
 
-To build a runnable jar:
+Создание исполняемого jar:
 
 ```bash
 ./gradlew bootJar
 ```
+
+## Настройка webhook
+
+После деплоя приложения по HTTPS зарегистрируйте webhook в Telegram:
+
+```bash
+curl -X POST https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook \
+     -d "url=https://<your-server>/telegram/webhook/<YOUR_BOT_TOKEN>"
+```
+
+Для разработки можно открыть локальный порт через
+[localtunnel](https://github.com/localtunnel/localtunnel):
+
+```bash
+npx localtunnel --port 8080
+# обратите внимание на выведенный HTTPS‑адрес
+```
+
+Чтобы повторно зарегистрировать webhook с вашим публичным URL,
+воспользуйтесь скриптом `register_webhook.sh`:
+
+```bash
+BOT_TOKEN=your_token WEBHOOK_URL=https://fifty-webs-think.loca.lt/telegram/webhook/your_token ./register_webhook.sh
+```
+
+Проверка текущей конфигурации:
+
+```bash
+curl -X POST https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo
+```
+
+Повторный запуск скрипта перезапишет предыдущий адрес webhook для того же токена.

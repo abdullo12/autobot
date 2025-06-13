@@ -3,14 +3,15 @@ package org.example.autobot;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.bots.TelegramWebhookBot;
+import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 
 @Component
-public class TelegramVacancyBot extends TelegramLongPollingBot {
+public class TelegramVacancyBot extends TelegramWebhookBot {
 
     @Value("${telegram.bot.token}")
     private String token;
@@ -33,7 +34,7 @@ public class TelegramVacancyBot extends TelegramLongPollingBot {
     }
 
     @Override
-    public void onUpdateReceived(Update update) {
+    public BotApiMethod<?> onWebhookUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String command = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
@@ -42,6 +43,12 @@ public class TelegramVacancyBot extends TelegramLongPollingBot {
                 sendMsg(chatId, response);
             }
         }
+        return null;
+    }
+
+    @Override
+    public String getBotPath() {
+        return "/telegram/webhook/" + token;
     }
 
     private void sendMsg(long chatId, String text) {
