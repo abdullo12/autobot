@@ -1,6 +1,8 @@
 plugins {
     id 'java'
     id 'application'
+    id 'org.springframework.boot' version '3.2.5'
+    id 'io.spring.dependency-management' version '1.1.4'
 }
 
 group = 'org.example'
@@ -11,30 +13,19 @@ repositories {
 }
 
 dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.telegram:telegrambots-spring-boot-starter:6.5.0'
     implementation 'com.google.code.gson:gson:2.10.1'
-    implementation 'org.telegram:telegrambots:6.5.0'
-    implementation 'io.github.cdimascio:dotenv-java:2.3.2'
 
 }
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(17)
     }
 }
 
 application {
-    mainClass = 'org.example.autobot.Main'
+    mainClass = 'org.example.autobot.AutobotApplication'
 }
 
-tasks.register('fatJar', Jar) {
-    manifest {
-        attributes 'Main-Class': application.mainClass.get()
-    }
-    archiveBaseName = 'app'
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    from {
-        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-    }
-    with jar
-}
