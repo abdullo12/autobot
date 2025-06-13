@@ -11,11 +11,13 @@ import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class HhFetcher {
 
-    private static int lastPage = -1;
-
-    public static String fetchAndFormatVacancies() {
+    private int lastPage = -1;
+    public String fetchAndFormatVacancies() {
         StringBuilder resultText = new StringBuilder();
         try {
             int page;

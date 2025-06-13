@@ -1,5 +1,6 @@
 package org.example.autobot;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -16,6 +17,9 @@ public class TelegramVacancyBot extends TelegramLongPollingBot {
 
     @Value("${telegram.bot.username}")
     private String username;
+  
+    @Autowired
+    private HhFetcher hhFetcher;
 
 
     @Override
@@ -34,7 +38,7 @@ public class TelegramVacancyBot extends TelegramLongPollingBot {
             String command = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
             if (command.equals("/start") || command.equals("/vacancies")) {
-                String response = HhFetcher.fetchAndFormatVacancies();
+                String response = hhFetcher.fetchAndFormatVacancies();
                 sendMsg(chatId, response);
             }
         }

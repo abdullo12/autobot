@@ -1,19 +1,11 @@
 # Autobot
 
-A simple Telegram bot that fetches Java vacancies from HH.ru.
-The current implementation is written in Python using
-`python-telegram-bot`.
+Autobot is a Spring Boot application that fetches Java vacancies from HH.ru and
+serves them via a Telegram bot.
 
 ## Setup
 
-Install dependencies with pip:
-
-```bash
-pip install -r requirements.txt
-```
-
-Set environment variables for your bot's credentials (you can copy
-`.env.example` to `.env` and edit it):
+Set environment variables for your bot's credentials:
 
 ```bash
 export BOT_TOKEN=your_token
@@ -22,15 +14,14 @@ export BOT_USERNAME=your_username
 
 ## Running
 
-Start the bot:
+Start the bot using the Gradle wrapper:
 
 ```bash
-python bot.py
+./gradlew bootRun
 ```
 
-To build the legacy Java version, use the Gradle wrapper:
+To build a runnable jar:
 
 ```bash
-./gradlew build
-./gradlew fatJar
+./gradlew bootJar
 ```
