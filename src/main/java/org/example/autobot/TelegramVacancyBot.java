@@ -1,18 +1,21 @@
 package org.example.autobot;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import io.github.cdimascio.dotenv.Dotenv;
 
 
+@Component
 public class TelegramVacancyBot extends TelegramLongPollingBot {
 
-    Dotenv dotenv = Dotenv.configure().load();
+    @Value("${telegram.bot.token}")
+    private String token;
 
-    private final String token = dotenv.get("BOT_TOKEN");
-    private final String username = dotenv.get("BOT_USERNAME");
+    @Value("${telegram.bot.username}")
+    private String username;
 
 
     @Override
