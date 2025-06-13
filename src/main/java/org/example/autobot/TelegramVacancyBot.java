@@ -1,8 +1,9 @@
 package org.example.autobot;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.bots.TelegramWebhookBot;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -19,8 +20,8 @@ public class TelegramVacancyBot extends TelegramWebhookBot {
     @Value("${telegram.bot.username}")
     private String username;
   
-    @Autowired
-    private HhFetcher hhFetcher;
+
+    private static final Logger log = LoggerFactory.getLogger(TelegramVacancyBot.class);
 
 
     @Override
@@ -35,23 +36,16 @@ public class TelegramVacancyBot extends TelegramWebhookBot {
 
     @Override
     public BotApiMethod<?> onWebhookUpdateReceived(Update update) {
-        if (update.hasMessage() && update.getMessage().hasText()) {
-            String command = update.getMessage().getText();
-            long chatId = update.getMessage().getChatId();
-            if (command.equals("/start") || command.equals("/vacancies")) {
-                String response = hhFetcher.fetchAndFormatVacancies();
-                sendMsg(chatId, response);
-            }
-        }
+        log.debug("Received update in TelegramVacancyBot: {}", update);
         return null;
     }
 
     @Override
     public String getBotPath() {
-        return "/telegram/webhook/" + token;
+        return "/webhook";
     }
 
-    private void sendMsg(long chatId, String text) {
+    public void sendText(long chatId, String text) {
         SendMessage msg = new SendMessage();
         msg.setChatId(String.valueOf(chatId));
         msg.setText(text);

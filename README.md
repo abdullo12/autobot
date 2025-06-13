@@ -36,7 +36,7 @@ telegram.bot.username=@your_bot
 
 ```bash
 curl -X POST https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook \
-     -d "url=https://<your-server>/telegram/webhook/<YOUR_BOT_TOKEN>"
+     -d "url=https://<your-server>/webhook"
 ```
 
 Для разработки можно открыть локальный порт через
@@ -51,7 +51,7 @@ npx localtunnel --port 8080
 воспользуйтесь скриптом `register_webhook.sh`:
 
 ```bash
-BOT_TOKEN=your_token WEBHOOK_URL=https://fifty-webs-think.loca.lt/telegram/webhook/your_token ./register_webhook.sh
+BOT_TOKEN=your_token WEBHOOK_URL=https://fifty-webs-think.loca.lt/webhook ./register_webhook.sh
 ```
 
 Проверка текущей конфигурации:

@@ -1,28 +1,24 @@
 package org.example.autobot;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.example.autobot.command.CommandHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.generics.WebhookBot;
 
 @RestController
-@RequestMapping("/telegram")
 public class TelegramWebhookController {
 
-    private final WebhookBot bot;
+    private static final Logger log = LoggerFactory.getLogger(TelegramWebhookController.class);
+    private final CommandHandler commandHandler;
 
-    @Value("${telegram.bot.token}")
-    private String botToken;
-
-    public TelegramWebhookController(WebhookBot bot) {
-        this.bot = bot;
+    public TelegramWebhookController(CommandHandler commandHandler) {
+        this.commandHandler = commandHandler;
     }
 
-    @PostMapping("/webhook/{token}")
-    public void onUpdateReceived(@RequestBody Update update, @PathVariable String token) {
-        if (!token.equals(botToken)) {
-            throw new SecurityException("Invalid token");
-        }
-        bot.onWebhookUpdateReceived(update);
+    @PostMapping("/webhook")
+    public void onUpdateReceived(@RequestBody Update update) {
+        log.info("Update received: {}", update);
+        commandHandler.handle(update);
     }
 }
