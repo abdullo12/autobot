@@ -2,6 +2,7 @@ package org.example.autobot;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -13,7 +14,7 @@ public class TelegramSender {
 
     private final TelegramVacancyBot bot;
 
-    public TelegramSender(TelegramVacancyBot bot) {
+    public TelegramSender(@Lazy TelegramVacancyBot bot) {
         this.bot = bot;
     }
 
