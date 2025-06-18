@@ -1,6 +1,7 @@
 package org.example.autobot;
 
 import org.example.autobot.command.CommandHandler;
+import org.example.autobot.kafka.KafkaUpdateProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +15,7 @@ public class TelegramVacancyBot extends TelegramLongPollingBot {
     private static final Logger log = LoggerFactory.getLogger(TelegramVacancyBot.class);
 
     private final CommandHandler commandHandler;
+    private final KafkaUpdateProducer updateProducer;
 
     @Value("${telegram.bot.token}")
     private String token;
@@ -21,13 +23,15 @@ public class TelegramVacancyBot extends TelegramLongPollingBot {
     @Value("${telegram.bot.username}")
     private String username;
 
-    public TelegramVacancyBot(CommandHandler commandHandler) {
+    public TelegramVacancyBot(CommandHandler commandHandler, KafkaUpdateProducer updateProducer) {
         this.commandHandler = commandHandler;
+        this.updateProducer = updateProducer;
     }
 
     @Override
     public void onUpdateReceived(Update update) {
         log.info("📥 Update received: {}", update);
+        updateProducer.send(update);
         commandHandler.handle(update);
     }
 
