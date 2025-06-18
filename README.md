@@ -30,6 +30,17 @@ telegram.bot.username=@your_bot
 ./gradlew bootJar
 ```
 
+## Kafka через Docker
+
+Для работы Kafka в режиме разработки используйте `docker-compose.yml`:
+
+```bash
+docker-compose up -d
+```
+
+Он запустит Zookeeper и Kafka на стандартных портах `2181` и `9092`.
+
+
 ## Настройка webhook
 
 После деплоя приложения по HTTPS зарегистрируйте webhook в Telegram:
