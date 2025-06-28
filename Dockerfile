@@ -1,9 +1,13 @@
+# Dockerfile
 FROM eclipse-temurin:21-jdk
+
 WORKDIR /app
 
+# копируем уже собранный Jar (у вас — autobot-1.0.jar)
 COPY build/libs/autobot-1.0.jar app.jar
 
-ENV SPRING_OUTPUT_ANSI_ENABLED=ALWAYS
-ENV JAVA_OPTS=""
+# открываем порт, который слушает Spring Boot
+EXPOSE 8081
 
-CMD java $JAVA_OPTS -jar app.jar
+# запускаем приложение
+ENTRYPOINT ["java","-jar","app.jar"]
