@@ -1,4 +1,4 @@
-package org.example.autobot;
+package org.example.autobot.service;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
