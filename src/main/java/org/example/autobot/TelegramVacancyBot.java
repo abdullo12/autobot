@@ -5,7 +5,7 @@ import org.example.autobot.kafka.KafkaUpdateProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.example.autobot.config.TelegramBotProperties;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -17,20 +17,17 @@ public class TelegramVacancyBot extends TelegramLongPollingBot {
 
     private final CommandHandler commandHandler;
     private final KafkaUpdateProducer updateProducer;  // может быть null
-
-    @Value("${telegram.bot.token}")
-    private String token;
-
-    @Value("${telegram.bot.username}")
-    private String username;
+    private final TelegramBotProperties properties;
 
     // Внедряем KafkaUpdateProducer с required=false
     public TelegramVacancyBot(
             CommandHandler commandHandler,
-            @Autowired(required = false) KafkaUpdateProducer updateProducer
+            @Autowired(required = false) KafkaUpdateProducer updateProducer,
+            TelegramBotProperties properties
     ) {
         this.commandHandler = commandHandler;
         this.updateProducer = updateProducer;
+        this.properties = properties;
     }
 
     @Override
@@ -48,12 +45,12 @@ public class TelegramVacancyBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return username;
+        return properties.getUsername();
     }
 
     @Override
     public String getBotToken() {
-        return token;
+        return properties.getToken();
     }
 
     // Если используется, можно оставить
