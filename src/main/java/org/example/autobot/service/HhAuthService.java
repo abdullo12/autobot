@@ -2,6 +2,7 @@ package org.example.autobot.service;
 
 import org.example.autobot.model.HhProfile;
 import org.example.autobot.repository.HhProfileRepository;
+import org.example.autobot.config.HhOAuthProperties;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -16,14 +17,7 @@ import org.slf4j.LoggerFactory;
 public class HhAuthService {
     private static final Logger log = LoggerFactory.getLogger(HhAuthService.class);
 
-    @Value("${hh.oauth.client-id}")
-    private String clientId;
-
-    @Value("${hh.oauth.client-secret}")
-    private String clientSecret;
-
-    @Value("${hh.oauth.redirect-uri}")
-    private String redirectUri;
+    private final HhOAuthProperties props;
 
     private final HhProfileRepository repo;
     private final WebClient client;
@@ -31,9 +25,11 @@ public class HhAuthService {
     public HhAuthService(
             HhProfileRepository repo,
             WebClient.Builder builder,
+            HhOAuthProperties props,
             @Value("${hh.base-url:https://hh.ru}") String baseUrl
     ) {
         this.repo = repo;
+        this.props = props;
         this.client = builder.baseUrl(baseUrl).build();
     }
 
@@ -43,7 +39,7 @@ public class HhAuthService {
     public String buildAuthUrl(long chatId) {
         return String.format(
                 "https://hh.ru/oauth/authorize?response_type=code&client_id=%s&state=%d&redirect_uri=%s",
-                clientId, chatId, redirectUri
+                props.getClientId(), chatId, props.getRedirectUri()
         );
     }
 
@@ -55,10 +51,10 @@ public class HhAuthService {
                 .uri("/oauth/token")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(BodyInserters.fromFormData("grant_type", "authorization_code")
-                        .with("client_id", clientId)
-                        .with("client_secret", clientSecret)
+                        .with("client_id", props.getClientId())
+                        .with("client_secret", props.getClientSecret())
                         .with("code", code)
-                        .with("redirect_uri", redirectUri))
+                        .with("redirect_uri", props.getRedirectUri()))
                 .retrieve()
                 .bodyToMono(TokenResponse.class)
                 .map(tr -> {
