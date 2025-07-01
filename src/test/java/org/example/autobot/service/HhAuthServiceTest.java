@@ -7,7 +7,6 @@ import org.example.autobot.repository.HhProfileRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
@@ -33,11 +32,11 @@ class HhAuthServiceTest {
         // Внедряем WebClient с базовым URL mock-сервера
         WebClient.Builder builder = WebClient.builder()
                 .baseUrl(server.url("/").toString());
-        service = new HhAuthService(repo, builder, server.url("/").toString());
-        // Устанавливаем приватные поля через рефлексию
-        ReflectionTestUtils.setField(service, "clientId", "testId");
-        ReflectionTestUtils.setField(service, "clientSecret", "testSecret");
-        ReflectionTestUtils.setField(service, "redirectUri", "http://localhost/callback");
+        var props = new org.example.autobot.config.HhOAuthProperties();
+        props.setClientId("testId");
+        props.setClientSecret("testSecret");
+        props.setRedirectUri("http://localhost/callback");
+        service = new HhAuthService(repo, builder, props, server.url("/").toString());
     }
 
     @AfterEach
