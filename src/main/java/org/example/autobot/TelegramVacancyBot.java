@@ -2,12 +2,13 @@ package org.example.autobot;
 
 import org.example.autobot.command.CommandHandler;
 import org.example.autobot.kafka.KafkaUpdateProducer;
+import org.example.autobot.config.TelegramBotProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.example.autobot.config.TelegramBotProperties;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 @Component
@@ -19,7 +20,6 @@ public class TelegramVacancyBot extends TelegramLongPollingBot {
     private final KafkaUpdateProducer updateProducer;  // может быть null
     private final TelegramBotProperties properties;
 
-    // Внедряем KafkaUpdateProducer с required=false
     public TelegramVacancyBot(
             CommandHandler commandHandler,
             @Autowired(required = false) KafkaUpdateProducer updateProducer,
@@ -53,16 +53,18 @@ public class TelegramVacancyBot extends TelegramLongPollingBot {
         return properties.getToken();
     }
 
-    // Если используется, можно оставить
+    /**
+     * Вспомогательный метод для отправки текстового сообщения.
+     */
     public void sendText(long chatId, String text) {
+        SendMessage msg = SendMessage.builder()
+                .chatId(String.valueOf(chatId))
+                .text(text)
+                .build();
         try {
-            execute(new org.telegram.telegrambots.meta.api.methods.send.SendMessage(
-                    String.valueOf(chatId),
-                    text
-            ));
+            execute(msg);
         } catch (Exception e) {
             log.error("❌ Failed to send message", e);
         }
     }
 }
-

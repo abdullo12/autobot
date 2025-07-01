@@ -1,6 +1,6 @@
-package org.example.autobot.web;
+package org.example.autobot.service;
 
-import org.example.autobot.service.HhAuthService;
+import org.example.autobot.web.HhAuthController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;

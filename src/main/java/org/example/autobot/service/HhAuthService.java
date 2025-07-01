@@ -3,24 +3,25 @@ package org.example.autobot.service;
 import org.example.autobot.model.HhProfile;
 import org.example.autobot.repository.HhProfileRepository;
 import org.example.autobot.config.HhOAuthProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Service
 public class HhAuthService {
     private static final Logger log = LoggerFactory.getLogger(HhAuthService.class);
 
     private final HhOAuthProperties props;
-
     private final HhProfileRepository repo;
     private final WebClient client;
+    private final String baseUrl;
 
     public HhAuthService(
             HhProfileRepository repo,
@@ -31,16 +32,22 @@ public class HhAuthService {
         this.repo = repo;
         this.props = props;
         this.client = builder.baseUrl(baseUrl).build();
+        this.baseUrl = baseUrl;
     }
 
     /**
      * Собирает URL для начала OAuth-потока.
      */
     public String buildAuthUrl(long chatId) {
-        return String.format(
-                "https://hh.ru/oauth/authorize?response_type=code&client_id=%s&state=%d&redirect_uri=%s",
-                props.getClientId(), chatId, props.getRedirectUri()
-        );
+        String authorizeBase = baseUrl + "/oauth/authorize";
+        return UriComponentsBuilder
+                .fromHttpUrl(authorizeBase)
+                .queryParam("response_type", "code")
+                .queryParam("client_id", props.getClientId())
+                .queryParam("state", chatId)
+                .queryParam("redirect_uri", props.getRedirectUri())
+                .encode()
+                .toUriString();
     }
 
     /**

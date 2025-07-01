@@ -1,4 +1,4 @@
-package org.example.autobot.web;
+package org.example.autobot.service;
 
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
