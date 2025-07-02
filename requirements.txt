@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+httpx
+python-dotenv
+sqlalchemy>=1.4
+asyncpg
+aiosqlite
+pytest
+pytest-asyncio
+respx

@@ -72,3 +72,9 @@ curl -X POST https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo
 ```
 
 Повторный запуск скрипта перезапишет предыдущий адрес webhook для того же токена.
+
+## OAuth FastAPI
+
+В проекте есть отдельный сервис на Python для привязки профиля HeadHunter.
+
+Инструкция по запуску находится в каталоге `hh_oauth_fastapi/README.md`.
