@@ -1,9 +1,12 @@
+"""Entry point for the bot and FastAPI application."""
+
 import logging
 import threading
+import asyncio
 from fastapi import FastAPI, HTTPException, Query
 from .auth import exchange_code_for_token
 from .config import settings
-from .bot import create_bot
+from .bot import build_bot
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
@@ -11,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 @app.get("/callback")
-def callback(code: str = Query(...), state: int = Query(...)):
+async def callback(code: str = Query(...), state: int = Query(...)):
     try:
-        exchange_code_for_token(code, state)
+        await exchange_code_for_token(code, state)
         return {"status": "ok", "msg": "Профиль успешно привязан"}
     except Exception as e:
         logger.error("Ошибка при обмене code->token: %s", e)
@@ -21,15 +24,15 @@ def callback(code: str = Query(...), state: int = Query(...)):
 
 
 def main() -> None:
-    bot_app = create_bot()
+    bot_app = build_bot()
 
-    def bot_thread():
+    def run_bot() -> None:
         bot_app.run_polling()
 
-    threading.Thread(target=bot_thread, daemon=True).start()
+    threading.Thread(target=run_bot, daemon=True).start()
 
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=settings.server_port)
+    uvicorn.run(app, host=settings.server_host, port=settings.server_port)
 
 
 if __name__ == "__main__":

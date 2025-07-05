@@ -1,15 +1,23 @@
+"""Vacancy search helpers."""
+
+import asyncio
 import random
-import requests
 from datetime import datetime
+import requests
 
 
-def fetch_and_format_vacancies() -> str:
+async def fetch_and_format_vacancies() -> str:
     page = random.randint(0, 19)
     url = (
         "https://api.hh.ru/vacancies?text=python"
         f"&per_page=5&page={page}&only_with_salary=true&search_field=name"
     )
-    resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+    def request_vacancies() -> requests.Response:
+        return requests.get(
+            url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10
+        )
+
+    resp = await asyncio.to_thread(request_vacancies)
     if resp.status_code != 200:
         return "\u2757 Ошибка при получении вакансий."
     data = resp.json()

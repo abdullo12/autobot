@@ -4,10 +4,5 @@ requests
 python-telegram-bot==20.7
 python-dotenv
 pydantic
-sqlalchemy>=1.4
-asyncpg
-aiosqlite
 pytest
 pytest-asyncio
-respx
-responses

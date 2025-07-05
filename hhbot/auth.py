@@ -1,5 +1,8 @@
+"""OAuth helper functions for HeadHunter integration."""
+
 from urllib.parse import urlencode
 import logging
+import asyncio
 import requests
 
 from .config import settings
@@ -18,7 +21,7 @@ def build_auth_url(chat_id: int) -> str:
     return f"https://hh.ru/oauth/authorize?{urlencode(params)}"
 
 
-def exchange_code_for_token(code: str, chat_id: int) -> None:
+async def exchange_code_for_token(code: str, chat_id: int) -> None:
     data = {
         "grant_type": "authorization_code",
         "client_id": settings.hh_client_id,
@@ -26,9 +29,13 @@ def exchange_code_for_token(code: str, chat_id: int) -> None:
         "code": code,
         "redirect_uri": settings.hh_redirect_uri,
     }
-    resp = requests.post("https://hh.ru/oauth/token", data=data, timeout=10)
-    resp.raise_for_status()
-    payload = resp.json()
+
+    def request_token() -> dict:
+        resp = requests.post("https://hh.ru/oauth/token", data=data, timeout=10)
+        resp.raise_for_status()
+        return resp.json()
+
+    payload = await asyncio.to_thread(request_token)
     tokens[chat_id] = {
         "access_token": payload["access_token"],
         "refresh_token": payload.get("refresh_token", ""),
