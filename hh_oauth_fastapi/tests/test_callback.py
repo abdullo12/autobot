@@ -2,8 +2,7 @@ import sys, pathlib
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[2]))
 import os
 import pytest
-import respx
-from httpx import Response
+import responses
 import pytest_asyncio
 from fastapi import status
 from httpx import AsyncClient
@@ -22,11 +21,14 @@ async def setup_db():
     await init_db()
     yield
 
-@respx.mock
+@responses.activate
 @pytest.mark.asyncio
 async def test_callback_success():
-    respx.post("https://hh.ru/oauth/token").mock(
-        return_value=Response(200, json={"access_token": "a", "refresh_token": "r"})
+    responses.add(
+        responses.POST,
+        "https://hh.ru/oauth/token",
+        json={"access_token": "a", "refresh_token": "r"},
+        status=200,
     )
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         response = await ac.get("/callback", params={"code": "123", "state": 1})
@@ -37,10 +39,14 @@ async def test_callback_success():
         assert len(profiles) == 1
         assert profiles[0].chat_id == 1
 
-@respx.mock
+@responses.activate
 @pytest.mark.asyncio
 async def test_callback_failure():
-    respx.post("https://hh.ru/oauth/token").mock(return_value=Response(400))
+    responses.add(
+        responses.POST,
+        "https://hh.ru/oauth/token",
+        status=400,
+    )
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         response = await ac.get("/callback", params={"code": "bad", "state": 2})
     assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR

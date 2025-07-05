@@ -1,9 +1,10 @@
 import os
 import logging
+import asyncio
 
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import JSONResponse
-import httpx
+import requests
 from dotenv import load_dotenv
 
 from .database import AsyncSessionLocal, init_db
@@ -27,8 +28,10 @@ async def on_startup():
 @app.get("/callback")
 async def callback(code: str = Query(...), state: int = Query(...)):
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
+        loop = asyncio.get_event_loop()
+        resp = await loop.run_in_executor(
+            None,
+            lambda: requests.post(
                 "https://hh.ru/oauth/token",
                 data={
                     "grant_type": "authorization_code",
@@ -37,7 +40,9 @@ async def callback(code: str = Query(...), state: int = Query(...)):
                     "code": code,
                     "redirect_uri": HH_REDIRECT_URI,
                 },
-            )
+                timeout=10,
+            ),
+        )
         resp.raise_for_status()
         data = resp.json()
         access_token = data["access_token"]

@@ -1,5 +1,11 @@
 # Autobot
 
+В каталоге `autobot_py` находится полная 
+версия бота на Python. Она использует FastAPI, requests и python-telegram-bot.
+Для запуска установите зависимости `pip install -r requirements.txt`, создайте 
+файл `.env` по образцу `.env.example` и выполните `python -m autobot_py.main`.
+
+
 Autobot — это приложение Spring Boot, которое собирает вакансии Java с HH.ru и
 отправляет их через Telegram‑бота.
 
