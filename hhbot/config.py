@@ -1,22 +1,18 @@
-"""Configuration loaded from environment variables."""
-
-from pydantic import BaseSettings
-from dotenv import load_dotenv
-
-
-load_dotenv()
-
+# hhbot/config.py
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    telegram_bot_token: str
-    hh_client_id: str
+    hh_client_id:     str
     hh_client_secret: str
-    hh_redirect_uri: str
-    server_host: str = "0.0.0.0"
-    server_port: int = 8000
+    hh_redirect_uri:  str
+    telegram_bot_token: str
+    server_port:      int = 8081
 
     class Config:
-        env_file = ".env"
-
+        env_file = ".env"      # <-- файл в корне проекта
+        env_prefix = ""        # <-- без префикса
+        case_sensitive = False
 
 settings = Settings()
+
+

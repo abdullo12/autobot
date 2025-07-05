@@ -1,0 +1,839 @@
+Index: src/test/java/org/example/autobot/service/HhAuthServiceMockTest.java
+===================================================================
+diff --git a/src/test/java/org/example/autobot/service/HhAuthServiceMockTest.java b/src/test/java/org/example/autobot/service/HhAuthServiceMockTest.java
+deleted file mode 100644
+--- a/src/test/java/org/example/autobot/service/HhAuthServiceMockTest.java	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
++++ /dev/null	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
+@@ -1,92 +0,0 @@
+-package org.example.autobot.service;
+-
+-import org.example.autobot.config.HhOAuthProperties;
+-import org.example.autobot.model.HhProfile;
+-import org.example.autobot.repository.HhProfileRepository;
+-import org.junit.jupiter.api.Test;
+-import org.springframework.http.HttpStatus;
+-import org.springframework.http.MediaType;
+-import org.springframework.web.reactive.function.client.ClientResponse;
+-import org.springframework.web.reactive.function.client.ExchangeFunction;
+-import org.springframework.web.reactive.function.client.WebClient;
+-import reactor.core.publisher.Mono;
+-
+-import java.util.HashMap;
+-import java.util.Map;
+-import java.util.Optional;
+-
+-import static org.junit.jupiter.api.Assertions.*;
+-
+-class HhAuthServiceMockTest {
+-
+-    @Test
+-    void handleCallback_success() {
+-        ExchangeFunction exchange = request -> Mono.just(
+-                ClientResponse.create(HttpStatus.OK)
+-                        .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+-                        .body("{\"access_token\":\"AT\",\"refresh_token\":\"RT\"}")
+-                        .build());
+-
+-        InMemoryRepo repo = new InMemoryRepo();
+-        WebClient.Builder builder = WebClient.builder().exchangeFunction(exchange);
+-        HhOAuthProperties props = new HhOAuthProperties();
+-        props.setClientId("id");
+-        props.setClientSecret("sec");
+-        props.setRedirectUri("http://localhost/callback");
+-
+-        HhAuthService service = new HhAuthService(repo, builder, props, "http://test");
+-
+-        String msg = service.handleCallback("code", 5L).block();
+-        assertEquals("Профиль успешно привязан", msg);
+-
+-        Optional<HhProfile> saved = repo.findById(5L);
+-        assertTrue(saved.isPresent());
+-        assertEquals("AT", saved.get().getAccessToken());
+-        assertEquals("RT", saved.get().getRefreshToken());
+-    }
+-
+-    @Test
+-    void handleCallback_error() {
+-        ExchangeFunction exchange = request -> Mono.error(new RuntimeException("fail"));
+-
+-        InMemoryRepo repo = new InMemoryRepo();
+-        WebClient.Builder builder = WebClient.builder().exchangeFunction(exchange);
+-        HhOAuthProperties props = new HhOAuthProperties();
+-        props.setClientId("id");
+-        props.setClientSecret("sec");
+-        props.setRedirectUri("http://localhost/callback");
+-
+-        HhAuthService service = new HhAuthService(repo, builder, props, "http://test");
+-
+-        String msg = service.handleCallback("code", 5L).block();
+-        assertEquals("Не удалось привязать профиль", msg);
+-        assertTrue(repo.findById(5L).isEmpty());
+-    }
+-
+-    private static class InMemoryRepo implements HhProfileRepository {
+-        private final Map<Long, HhProfile> storage = new HashMap<>();
+-
+-        @Override
+-        public <S extends HhProfile> S save(S entity) {
+-            storage.put(entity.getChatId(), entity);
+-            return entity;
+-        }
+-
+-        @Override
+-        public Optional<HhProfile> findById(Long id) {
+-            return Optional.ofNullable(storage.get(id));
+-        }
+-
+-        // Unused methods
+-        @Override public <S extends HhProfile> Iterable<S> saveAll(Iterable<S> entities) { throw new UnsupportedOperationException(); }
+-        @Override public boolean existsById(Long id) { return storage.containsKey(id); }
+-        @Override public Iterable<HhProfile> findAll() { return storage.values(); }
+-        @Override public Iterable<HhProfile> findAllById(Iterable<Long> ids) { throw new UnsupportedOperationException(); }
+-        @Override public long count() { return storage.size(); }
+-        @Override public void deleteById(Long id) { storage.remove(id); }
+-        @Override public void delete(HhProfile entity) { storage.remove(entity.getChatId()); }
+-        @Override public void deleteAllById(Iterable<? extends Long> ids) { throw new UnsupportedOperationException(); }
+-        @Override public void deleteAll(Iterable<? extends HhProfile> entities) { throw new UnsupportedOperationException(); }
+-        @Override public void deleteAll() { storage.clear(); }
+-    }
+-}
+\ No newline at end of file
+Index: src/main/java/org/example/autobot/service/HhResumeService.java
+===================================================================
+diff --git a/src/main/java/org/example/autobot/service/HhResumeService.java b/src/main/java/org/example/autobot/service/HhResumeService.java
+deleted file mode 100644
+--- a/src/main/java/org/example/autobot/service/HhResumeService.java	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
++++ /dev/null	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
+@@ -1,48 +0,0 @@
+-package org.example.autobot.service;
+-
+-import org.example.autobot.model.HhProfile;
+-import org.example.autobot.repository.HhProfileRepository;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-import org.springframework.beans.factory.annotation.Value;
+-import org.springframework.http.HttpHeaders;
+-import org.springframework.http.MediaType;
+-import org.springframework.stereotype.Service;
+-import org.springframework.web.reactive.function.client.WebClient;
+-import reactor.core.publisher.Mono;
+-
+-@Service
+-public class HhResumeService {
+-    private static final Logger log = LoggerFactory.getLogger(HhResumeService.class);
+-    private final WebClient client;
+-    private final HhProfileRepository repo;
+-
+-    public HhResumeService(
+-            HhProfileRepository repo,
+-            WebClient.Builder builder,
+-            @Value("${hh.base-url:https://hh.ru}") String baseUrl
+-    ) {
+-        this.repo = repo;
+-        this.client = builder.baseUrl(baseUrl).build();
+-    }
+-
+-    /**
+-     * Возвращает JSON-строку с резюме пользователя.
+-     */
+-    public Mono<String> fetchMyResume(Long chatId) {
+-        return repo.findById(chatId)
+-                .map(HhProfile::getAccessToken)
+-                .map(token ->
+-                        client.get()
+-                                .uri("/resumes/mine")
+-                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+-                                .accept(MediaType.APPLICATION_JSON)
+-                                .retrieve()
+-                                .bodyToMono(String.class)
+-                )
+-                .orElseGet(() -> {
+-                    log.warn("Нет токена для chatId={}", chatId);
+-                    return Mono.error(new IllegalStateException("Профиль hh.ru не привязан"));
+-                });
+-    }
+-}
+Index: src/test/java/org/example/autobot/service/HhAuthServiceTest.java
+===================================================================
+diff --git a/src/test/java/org/example/autobot/service/HhAuthServiceTest.java b/src/test/java/org/example/autobot/service/HhAuthServiceTest.java
+deleted file mode 100644
+--- a/src/test/java/org/example/autobot/service/HhAuthServiceTest.java	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
++++ /dev/null	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
+@@ -1,105 +0,0 @@
+-package org.example.autobot.service;
+-
+-import okhttp3.mockwebserver.MockResponse;
+-import okhttp3.mockwebserver.MockWebServer;
+-import org.example.autobot.model.HhProfile;
+-import org.example.autobot.repository.HhProfileRepository;
+-import org.junit.jupiter.api.AfterEach;
+-import org.junit.jupiter.api.BeforeEach;
+-import org.junit.jupiter.api.Test;
+-import org.springframework.web.reactive.function.client.WebClient;
+-import org.springframework.web.util.UriComponentsBuilder;
+-import reactor.core.publisher.Mono;
+-
+-import java.io.IOException;
+-import java.util.HashMap;
+-import java.util.Map;
+-import java.util.Optional;
+-
+-import static org.junit.jupiter.api.Assertions.*;
+-
+-class HhAuthServiceTest {
+-
+-    private MockWebServer server;
+-    private InMemoryRepo repo;
+-    private HhAuthService service;
+-
+-    @BeforeEach
+-    void setUp() throws IOException {
+-        server = new MockWebServer();
+-        server.start();
+-        repo = new InMemoryRepo();
+-        // Внедряем WebClient с базовым URL mock-сервера
+-        WebClient.Builder builder = WebClient.builder()
+-                .baseUrl(server.url("/").toString());
+-        var props = new org.example.autobot.config.HhOAuthProperties();
+-        props.setClientId("testId");
+-        props.setClientSecret("testSecret");
+-        props.setRedirectUri("http://localhost/callback");
+-        service = new HhAuthService(repo, builder, props, server.url("/").toString());
+-    }
+-
+-    @AfterEach
+-    void tearDown() throws IOException {
+-        server.shutdown();
+-    }
+-
+-    @Test
+-    void buildAuthUrl_containsParameters() {
+-        long chatId = 42L;
+-        String url = service.buildAuthUrl(chatId);
+-
+-        var params = UriComponentsBuilder.fromUriString(url).build().getQueryParams();
+-        assertEquals("code", params.getFirst("response_type"));
+-        assertEquals("testId", params.getFirst("client_id"));
+-        assertEquals(String.valueOf(chatId), params.getFirst("state"));
+-        assertEquals("http://localhost/callback", params.getFirst("redirect_uri"));
+-    }
+-
+-    @Test
+-    void handleCallback_savesProfile() {
+-        // Подготовка mock-ответа сервера
+-        server.enqueue(new MockResponse()
+-                .setBody("{\"access_token\":\"AT\",\"refresh_token\":\"RT\"}")
+-                .addHeader("Content-Type", "application/json"));
+-
+-        // Выполнение метода и блокировка до завершения
+-        Mono<String> result = service.handleCallback("authCode", 7L);
+-        result.block();
+-
+-        Optional<HhProfile> saved = repo.findById(7L);
+-        assertTrue(saved.isPresent(), "Профиль должен быть сохранён");
+-        assertEquals("AT", saved.get().getAccessToken());
+-        assertEquals("RT", saved.get().getRefreshToken());
+-    }
+-
+-    /**
+-     * Простая in-memory реализация репозитория
+-     */
+-    private static class InMemoryRepo implements HhProfileRepository {
+-        private final Map<Long, HhProfile> storage = new HashMap<>();
+-
+-        @Override
+-        public <S extends HhProfile> S save(S entity) {
+-            storage.put(entity.getChatId(), entity);
+-            return entity;
+-        }
+-
+-        @Override
+-        public Optional<HhProfile> findById(Long id) {
+-            return Optional.ofNullable(storage.get(id));
+-        }
+-
+-        // Остальные методы не используются в тестах
+-        @Override public <S extends HhProfile> Iterable<S> saveAll(Iterable<S> entities) { throw new UnsupportedOperationException(); }
+-        @Override public boolean existsById(Long id) { return storage.containsKey(id); }
+-        @Override public Iterable<HhProfile> findAll() { return storage.values(); }
+-        @Override public Iterable<HhProfile> findAllById(Iterable<Long> ids) { throw new UnsupportedOperationException(); }
+-        @Override public long count() { return storage.size(); }
+-        @Override public void deleteById(Long id) { storage.remove(id); }
+-        @Override public void delete(HhProfile entity) { storage.remove(entity.getChatId()); }
+-        @Override public void deleteAllById(Iterable<? extends Long> ids) { throw new UnsupportedOperationException(); }
+-        @Override public void deleteAll(Iterable<? extends HhProfile> entities) { throw new UnsupportedOperationException(); }
+-        @Override public void deleteAll() { storage.clear(); }
+-    }
+-}
+Index: src/test/java/org/example/autobot/service/HhAuthControllerTest.java
+===================================================================
+diff --git a/src/test/java/org/example/autobot/service/HhAuthControllerTest.java b/src/test/java/org/example/autobot/service/HhAuthControllerTest.java
+deleted file mode 100644
+--- a/src/test/java/org/example/autobot/service/HhAuthControllerTest.java	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
++++ /dev/null	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
+@@ -1,60 +0,0 @@
+-package org.example.autobot.service;
+-
+-import org.example.autobot.web.HhAuthController;
+-import org.junit.jupiter.api.Test;
+-import org.springframework.beans.factory.annotation.Autowired;
+-import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+-import org.springframework.boot.test.mock.mockito.MockBean;
+-import org.springframework.test.web.reactive.server.WebTestClient;
+-import reactor.core.publisher.Mono;
+-
+-import static org.mockito.ArgumentMatchers.eq;
+-import static org.mockito.BDDMockito.given;
+-
+-@WebFluxTest(HhAuthController.class)
+-class HhAuthControllerTest {
+-
+-    @Autowired
+-    private WebTestClient webClient;
+-
+-    @MockBean
+-    private HhAuthService hhAuthService;
+-
+-    @Test
+-    void callback_success() {
+-        given(hhAuthService.handleCallback(eq("abc"), eq(123L)))
+-                .willReturn(Mono.just("Профиль успешно привязан"));
+-
+-        webClient.get().uri("/callback?code=abc&state=123")
+-                .exchange()
+-                .expectStatus().isOk()
+-                .expectBody(String.class).isEqualTo("Профиль успешно привязан");
+-    }
+-
+-    @Test
+-    void callback_error() {
+-        given(hhAuthService.handleCallback(eq("err"), eq(123L)))
+-                .willReturn(Mono.just("Не удалось привязать профиль"));
+-
+-        webClient.get().uri("/callback?code=err&state=123")
+-                .exchange()
+-                .expectStatus().is5xxServerError()
+-                .expectBody(String.class).isEqualTo("Ошибка привязки профиля");
+-    }
+-
+-    @Test
+-    void missing_code_returnsBadRequest() {
+-        webClient.get().uri("/callback?state=123")
+-                .exchange()
+-                .expectStatus().isBadRequest()
+-                .expectBody(String.class).isEqualTo("Отсутствует обязательный параметр: code");
+-    }
+-
+-    @Test
+-    void missing_state_returnsBadRequest() {
+-        webClient.get().uri("/callback?code=abc")
+-                .exchange()
+-                .expectStatus().isBadRequest()
+-                .expectBody(String.class).isEqualTo("Отсутствует обязательный параметр: state");
+-    }
+-}
+\ No newline at end of file
+Index: src/test/java/org/example/autobot/service/HhAuthControllerIntegrationTest.java
+===================================================================
+diff --git a/src/test/java/org/example/autobot/service/HhAuthControllerIntegrationTest.java b/src/test/java/org/example/autobot/service/HhAuthControllerIntegrationTest.java
+deleted file mode 100644
+--- a/src/test/java/org/example/autobot/service/HhAuthControllerIntegrationTest.java	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
++++ /dev/null	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
+@@ -1,81 +0,0 @@
+-package org.example.autobot.service;
+-
+-import okhttp3.mockwebserver.MockResponse;
+-import okhttp3.mockwebserver.MockWebServer;
+-import org.example.autobot.model.HhProfile;
+-import org.example.autobot.repository.HhProfileRepository;
+-import org.junit.jupiter.api.*;
+-import org.springframework.beans.factory.annotation.Autowired;
+-import org.springframework.boot.test.context.SpringBootTest;
+-import org.springframework.test.context.ActiveProfiles;
+-import org.springframework.test.context.DynamicPropertyRegistry;
+-import org.springframework.test.context.DynamicPropertySource;
+-import org.springframework.test.web.reactive.server.WebTestClient;
+-
+-import java.io.IOException;
+-import java.util.Optional;
+-
+-import static org.junit.jupiter.api.Assertions.*;
+-
+-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+-@ActiveProfiles("test")
+-class HhAuthControllerIntegrationTest {
+-
+-    @Autowired
+-    private WebTestClient webClient;
+-
+-    @Autowired
+-    private HhProfileRepository repository;
+-
+-    private static MockWebServer server;
+-
+-    @BeforeAll
+-    static void startServer() throws IOException {
+-        server = new MockWebServer();
+-        server.start();
+-    }
+-
+-    @AfterAll
+-    static void stopServer() throws IOException {
+-        server.shutdown();
+-    }
+-
+-    @DynamicPropertySource
+-    static void registerProps(DynamicPropertyRegistry registry) {
+-        registry.add("hh.base-url", () -> server.url("/").toString());
+-    }
+-
+-    @BeforeEach
+-    void cleanRepo() {
+-        repository.deleteAll();
+-    }
+-
+-    @Test
+-    void callback_success_persistsProfile() {
+-        server.enqueue(new MockResponse()
+-                .setHeader("Content-Type", "application/json")
+-                .setBody("{\"access_token\":\"AT\",\"refresh_token\":\"RT\"}"));
+-
+-        webClient.get().uri("/callback?code=test&state=123")
+-                .exchange()
+-                .expectStatus().isOk()
+-                .expectBody(String.class).isEqualTo("Профиль успешно привязан");
+-
+-        Optional<HhProfile> saved = repository.findById(123L);
+-        assertTrue(saved.isPresent());
+-        assertEquals("AT", saved.get().getAccessToken());
+-        assertEquals("RT", saved.get().getRefreshToken());
+-    }
+-
+-    @Test
+-    void callback_error_returns500() {
+-        server.enqueue(new MockResponse().setResponseCode(500));
+-
+-        webClient.get().uri("/callback?code=test&state=123")
+-                .exchange()
+-                .expectStatus().is5xxServerError()
+-                .expectBody(String.class).isEqualTo("Ошибка привязки профиля");
+-
+-        assertTrue(repository.findById(123L).isEmpty());
+-    }
+-}
+\ No newline at end of file
+Index: src/test/java/org/example/autobot/service/HhOAuthPropertiesTest.java
+===================================================================
+diff --git a/src/test/java/org/example/autobot/service/HhOAuthPropertiesTest.java b/src/test/java/org/example/autobot/service/HhOAuthPropertiesTest.java
+deleted file mode 100644
+--- a/src/test/java/org/example/autobot/service/HhOAuthPropertiesTest.java	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
++++ /dev/null	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
+@@ -1,38 +0,0 @@
+-package org.example.autobot.service;
+-
+-import org.example.autobot.config.HhOAuthProperties;
+-import org.example.autobot.repository.HhProfileRepository;
+-import org.junit.jupiter.params.ParameterizedTest;
+-import org.junit.jupiter.params.provider.CsvSource;
+-import org.mockito.Mockito;
+-import org.springframework.web.reactive.function.client.WebClient;
+-
+-import static org.junit.jupiter.api.Assertions.assertEquals;
+-
+-class HhOAuthPropertiesTest {
+-
+-    @ParameterizedTest
+-    @CsvSource({
+-            "id1,http://host/cb1,5",
+-            "client2,https://ex.com/callback,9"
+-    })
+-    void buildAuthUrl_variousParams(String clientId, String redirectUri, long chatId) {
+-        HhOAuthProperties props = new HhOAuthProperties();
+-        props.setClientId(clientId);
+-        props.setClientSecret("sec");
+-        props.setRedirectUri(redirectUri);
+-
+-        HhAuthService service = new HhAuthService(
+-                Mockito.mock(HhProfileRepository.class),
+-                WebClient.builder(), props, "https://hh.ru");
+-
+-        String url = service.buildAuthUrl(chatId);
+-        assertEquals(
+-                String.format(
+-                        "https://hh.ru/oauth/authorize?response_type=code&client_id=%s&state=%d&redirect_uri=%s",
+-                        clientId, chatId, redirectUri
+-                ),
+-                url
+-        );
+-    }
+-}
+\ No newline at end of file
+Index: src/main/java/org/example/autobot/service/HhFetcher.java
+===================================================================
+diff --git a/src/main/java/org/example/autobot/service/HhFetcher.java b/src/main/java/org/example/autobot/service/HhFetcher.java
+deleted file mode 100644
+--- a/src/main/java/org/example/autobot/service/HhFetcher.java	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
++++ /dev/null	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
+@@ -1,76 +0,0 @@
+-package org.example.autobot.service;
+-
+-import com.google.gson.JsonArray;
+-import com.google.gson.JsonElement;
+-import com.google.gson.JsonObject;
+-import com.google.gson.JsonParser;
+-import java.io.BufferedReader;
+-import java.io.InputStreamReader;
+-import java.net.HttpURLConnection;
+-import java.net.URL;
+-import java.time.LocalDateTime;
+-import java.util.concurrent.ThreadLocalRandom;
+-
+-import org.springframework.stereotype.Component;
+-
+-@Component
+-public class HhFetcher {
+-
+-    private int lastPage = -1;
+-    public String fetchAndFormatVacancies() {
+-        StringBuilder resultText = new StringBuilder();
+-        try {
+-            int page;
+-            do {
+-                page = ThreadLocalRandom.current().nextInt(0, 20);
+-            } while (page == lastPage);
+-            lastPage = page;
+-
+-            String apiUrl = "https://api.hh.ru/vacancies?text=python" +
+-                    "&per_page=5&page=" + page +
+-                    "&only_with_salary=true&search_field=name";
+-
+-            HttpURLConnection conn = (HttpURLConnection) new URL(apiUrl).openConnection();
+-            conn.setRequestMethod("GET");
+-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+-
+-            try (BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+-                StringBuilder responseStr = new StringBuilder();
+-                String line;
+-                while ((line = in.readLine()) != null) {
+-                    responseStr.append(line);
+-                }
+-
+-                JsonObject response = JsonParser.parseString(responseStr.toString()).getAsJsonObject();
+-                JsonArray items = response.getAsJsonArray("items");
+-                if (items.size() == 0) {
+-                    return "❗ Не найдено подходящих вакансий.";
+-                }
+-
+-                resultText.append("📄 Страница ").append(page + 1)
+-                        .append(" • ").append(LocalDateTime.now()).append("\n\n");
+-
+-                for (JsonElement elem : items) {
+-                    JsonObject vacancy = elem.getAsJsonObject();
+-                    String title = vacancy.get("name").getAsString();
+-                    String url = vacancy.get("alternate_url").getAsString();
+-                    String company = vacancy.has("employer") && !vacancy.get("employer").isJsonNull()
+-                            ? vacancy.getAsJsonObject("employer").get("name").getAsString()
+-                            : "Не указано";
+-                    String city = vacancy.has("area") && !vacancy.get("area").isJsonNull()
+-                            ? vacancy.getAsJsonObject("area").get("name").getAsString()
+-                            : "Не указано";
+-
+-                    resultText.append("📌 *").append(title).append("*\n")
+-                            .append("🏢 ").append(company).append("\n")
+-                            .append("📍 ").append(city).append("\n")
+-                            .append("🔗 ").append(url).append("\n\n");
+-                }
+-            }
+-        } catch (Exception e) {
+-            resultText.append("❗ Ошибка при получении вакансий.");
+-            e.printStackTrace();
+-        }
+-        return resultText.toString();
+-    }
+-}
+Index: src/main/java/org/example/autobot/command/CommandHandler.java
+===================================================================
+diff --git a/src/main/java/org/example/autobot/command/CommandHandler.java b/src/main/java/org/example/autobot/command/CommandHandler.java
+deleted file mode 100644
+--- a/src/main/java/org/example/autobot/command/CommandHandler.java	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
++++ /dev/null	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
+@@ -1,119 +0,0 @@
+-package org.example.autobot.command;
+-
+-import org.example.autobot.service.HhAuthService;
+-import org.example.autobot.service.HhFetcher;
+-import org.example.autobot.service.HhResumeService;
+-import org.example.autobot.TelegramSender;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-import org.springframework.scheduling.annotation.Async;
+-import org.springframework.stereotype.Component;
+-import org.telegram.telegrambots.meta.api.objects.Update;
+-
+-@Component
+-public class CommandHandler {
+-    private static final Logger log = LoggerFactory.getLogger(CommandHandler.class);
+-
+-    private final TelegramSender sender;
+-    private final HhAuthService hhAuthService;
+-    private final HhResumeService hhResumeService;
+-    private final HhFetcher hhFetcher;
+-
+-    public CommandHandler(
+-            TelegramSender sender,
+-            HhAuthService hhAuthService,
+-            HhResumeService hhResumeService,
+-            HhFetcher hhFetcher
+-    ) {
+-        this.sender          = sender;
+-        this.hhAuthService   = hhAuthService;
+-        this.hhResumeService = hhResumeService;
+-        this.hhFetcher       = hhFetcher;
+-    }
+-
+-    /**
+-     * Обрабатывает входящее обновление (update) из Telegram.
+-     * Запускается в отдельном потоке (@Async), чтобы не блокировать polling.
+-     */
+-    @Async
+-    public void handle(Update update) {
+-        if (update == null
+-                || !update.hasMessage()
+-                || !update.getMessage().hasText()
+-        ) {
+-            return; // ничего нет — выходим
+-        }
+-
+-        String text   = update.getMessage().getText().trim();
+-        long   chatId = update.getMessage().getChatId();
+-
+-        // команда — это первое слово (до пробела)
+-        String command = text.split("\\s+")[0].toLowerCase();
+-
+-        try {
+-            switch (command) {
+-                case "/start":
+-                    sender.sendText(
+-                            chatId,
+-                            "👋 Привет! Я бот для автоматизации откликов на hh.ru.\n" +
+-                                    "• /vacancies — поиск свежих вакансий\n" +
+-                                    "• /linkhh — привязать ваш профиль hh.ru\n" +
+-                                    "• /getresume — получить ваше резюме из hh.ru\n" +
+-                                    "• /help — показать список команд"
+-                    );
+-                    break;
+-
+-                case "/help":
+-                    sender.sendText(
+-                            chatId,
+-                            "Доступные команды:\n" +
+-                                    "/start     — приветствие и список команд\n" +
+-                                    "/vacancies — поиск вакансий по вашим ключам\n" +
+-                                    "/linkhh    — привязать профиль hh.ru (OAuth)\n" +
+-                                    "/getresume — получить JSON вашего резюме\n" +
+-                                    "/help      — эта справка"
+-                    );
+-                    break;
+-
+-                case "/vacancies":
+-                    // hhFetcher.fetchAndFormatVacancies() возвращает String
+-                    String vacancies = hhFetcher.fetchAndFormatVacancies();
+-                    sender.sendText(chatId, vacancies);
+-                    break;
+-
+-                case "/linkhh":
+-                    // генерируем URL OAuth и отправляем пользователю
+-                    String url = hhAuthService.buildAuthUrl(chatId);
+-                    sender.sendText(
+-                            chatId,
+-                            "🔗 Перейдите по ссылке и авторизуйтесь на hh.ru:\n" + url
+-                    );
+-                    break;
+-
+-                case "/getresume":
+-                    // пытаемся достать резюме, блокируемся внутри @Async чтобы не мешать основному потоку
+-                    try {
+-                        String resumeJson = hhResumeService
+-                                .fetchMyResume(chatId)
+-                                .block(); // блок до завершения Mono
+-                        sender.sendText(chatId, "📄 Ваше резюме:\n" + resumeJson);
+-                    } catch (Exception e) {
+-                        log.warn("Ошибка получения резюме для chatId={}", chatId, e);
+-                        sender.sendText(
+-                                chatId,
+-                                "❌ Не могу получить резюме. Возможно, вы ещё не привязали профиль: /linkhh"
+-                        );
+-                    }
+-                    break;
+-
+-                default:
+-                    sender.sendText(chatId, "❓ Команда не распознана. Введите /help для списка команд.");
+-                    break;
+-            }
+-
+-        } catch (Exception ex) {
+-            log.error("Ошибка обработки команды {} от chatId={}", command, chatId, ex);
+-            sender.sendText(chatId, "⚠️ Произошла внутренняя ошибка. Попробуйте позже.");
+-        }
+-    }
+-}
+Index: src/main/java/org/example/autobot/model/HhProfile.java
+===================================================================
+diff --git a/src/main/java/org/example/autobot/model/HhProfile.java b/src/main/java/org/example/autobot/model/HhProfile.java
+deleted file mode 100644
+--- a/src/main/java/org/example/autobot/model/HhProfile.java	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
++++ /dev/null	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
+@@ -1,45 +0,0 @@
+-package org.example.autobot.model;
+-
+-import jakarta.persistence.Entity;
+-import jakarta.persistence.Id;
+-
+-@Entity
+-public class HhProfile {
+-    @Id
+-    private Long chatId;
+-    private String accessToken;
+-    private String refreshToken;
+-
+-    public HhProfile() {
+-    }
+-
+-    public HhProfile(Long chatId, String accessToken, String refreshToken) {
+-        this.chatId = chatId;
+-        this.accessToken = accessToken;
+-        this.refreshToken = refreshToken;
+-    }
+-
+-    public Long getChatId() {
+-        return chatId;
+-    }
+-
+-    public void setChatId(Long chatId) {
+-        this.chatId = chatId;
+-    }
+-
+-    public String getAccessToken() {
+-        return accessToken;
+-    }
+-
+-    public void setAccessToken(String accessToken) {
+-        this.accessToken = accessToken;
+-    }
+-
+-    public String getRefreshToken() {
+-        return refreshToken;
+-    }
+-
+-    public void setRefreshToken(String refreshToken) {
+-        this.refreshToken = refreshToken;
+-    }
+-}
+Index: src/main/java/org/example/autobot/repository/HhProfileRepository.java
+===================================================================
+diff --git a/src/main/java/org/example/autobot/repository/HhProfileRepository.java b/src/main/java/org/example/autobot/repository/HhProfileRepository.java
+deleted file mode 100644
+--- a/src/main/java/org/example/autobot/repository/HhProfileRepository.java	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
++++ /dev/null	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
+@@ -1,7 +0,0 @@
+-package org.example.autobot.repository;
+-
+-import org.example.autobot.model.HhProfile;
+-import org.springframework.data.repository.CrudRepository;
+-
+-public interface HhProfileRepository extends CrudRepository<HhProfile, Long> {
+-}
+Index: src/test/java/org/example/autobot/service/HhResumeServiceTest.java
+===================================================================
+diff --git a/src/test/java/org/example/autobot/service/HhResumeServiceTest.java b/src/test/java/org/example/autobot/service/HhResumeServiceTest.java
+deleted file mode 100644
+--- a/src/test/java/org/example/autobot/service/HhResumeServiceTest.java	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
++++ /dev/null	(revision 1b74a31ad094da45e948f0bc291d2833fc13b72d)
+@@ -1,87 +0,0 @@
+-package org.example.autobot.service;
+-
+-import okhttp3.mockwebserver.MockResponse;
+-import okhttp3.mockwebserver.MockWebServer;
+-import okhttp3.mockwebserver.RecordedRequest;
+-import org.example.autobot.model.HhProfile;
+-import org.example.autobot.repository.HhProfileRepository;
+-import org.junit.jupiter.api.AfterEach;
+-import org.junit.jupiter.api.BeforeEach;
+-import org.junit.jupiter.api.Test;
+-import org.springframework.web.reactive.function.client.WebClient;
+-import reactor.core.publisher.Mono;
+-
+-import java.io.IOException;
+-import java.util.HashMap;
+-import java.util.Map;
+-import java.util.Optional;
+-
+-import static org.junit.jupiter.api.Assertions.*;
+-
+-class HhResumeServiceTest {
+-
+-    private MockWebServer server;
+-    private InMemoryRepo repo;
+-    private HhResumeService service;
+-
+-    @BeforeEach
+-    void setUp() throws IOException {
+-        server = new MockWebServer();
+-        server.start();
+-        repo = new InMemoryRepo();
+-        WebClient.Builder builder = WebClient.builder().baseUrl(server.url("/").toString());
+-        service = new HhResumeService(repo, builder, server.url("/").toString());
+-    }
+-
+-    @AfterEach
+-    void tearDown() throws IOException {
+-        server.shutdown();
+-    }
+-
+-    @Test
+-    void fetchMyResume_returnsJson() throws InterruptedException {
+-        repo.save(new HhProfile(1L, "AT", "RT"));
+-        server.enqueue(new MockResponse()
+-                .setBody("{\"ok\":true}")
+-                .addHeader("Content-Type", "application/json"));
+-
+-        String json = service.fetchMyResume(1L).block();
+-        assertEquals("{\"ok\":true}", json);
+-
+-        RecordedRequest req = server.takeRequest();
+-        assertEquals("/resumes/mine", req.getPath());
+-        assertEquals("Bearer AT", req.getHeader("Authorization"));
+-    }
+-
+-    @Test
+-    void fetchMyResume_noProfile() {
+-        assertThrows(IllegalStateException.class, () -> service.fetchMyResume(2L).block());
+-    }
+-
+-    private static class InMemoryRepo implements HhProfileRepository {
+-        private final Map<Long, HhProfile> storage = new HashMap<>();
+-
+-        @Override
+-        public <S extends HhProfile> S save(S entity) {
+-            storage.put(entity.getChatId(), entity);
+-            return entity;
+-        }
+-
+-        @Override
+-        public Optional<HhProfile> findById(Long id) {
+-            return Optional.ofNullable(storage.get(id));
+-        }
+-
+-        // Unused methods
+-        @Override public <S extends HhProfile> Iterable<S> saveAll(Iterable<S> entities) { throw new UnsupportedOperationException(); }
+-        @Override public boolean existsById(Long id) { return storage.containsKey(id); }
+-        @Override public Iterable<HhProfile> findAll() { return storage.values(); }
+-        @Override public Iterable<HhProfile> findAllById(Iterable<Long> ids) { throw new UnsupportedOperationException(); }
+-        @Override public long count() { return storage.size(); }
+-        @Override public void deleteById(Long id) { storage.remove(id); }
+-        @Override public void delete(HhProfile entity) { storage.remove(entity.getChatId()); }
+-        @Override public void deleteAllById(Iterable<? extends Long> ids) { throw new UnsupportedOperationException(); }
+-        @Override public void deleteAll(Iterable<? extends HhProfile> entities) { throw new UnsupportedOperationException(); }
+-        @Override public void deleteAll() { storage.clear(); }
+-    }
+-}

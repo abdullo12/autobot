@@ -4,6 +4,10 @@ import asyncio
 import random
 from datetime import datetime
 import requests
+from typing import Dict, List
+
+# Список вакансий, который можно переопределить в тестах
+raw_vacancies: List[Dict] = []
 
 
 async def fetch_and_format_vacancies() -> str:
@@ -42,3 +46,39 @@ async def fetch_and_format_vacancies() -> str:
             f"\ud83d\udd17 {url}\n"
         )
     return "\n".join(lines)
+
+
+def filter_by_keywords(keywords: str) -> List[Dict]:
+    """Возвращает вакансии, содержащие все слова из keywords."""
+    words = [w.lower() for w in keywords.split()]
+    result: List[Dict] = []
+    for vac in raw_vacancies:
+        title = vac.get("name", "")
+        title_l = title.lower()
+        if all(word in title_l for word in words):
+            result.append({"title": title, "url": vac.get("alternate_url", "")})
+    return result
+
+
+def filter_by_city(city: str) -> List[Dict]:
+    """Возвращает вакансии по указанному городу."""
+    city_l = city.lower()
+    result: List[Dict] = []
+    for vac in raw_vacancies:
+        area = vac.get("area", {})
+        name = area.get("name", "").lower()
+        if city_l in name:
+            result.append({"title": vac.get("name", ""), "url": vac.get("alternate_url", "")})
+    return result
+
+
+def filter_by_salary(min_salary: int) -> List[Dict]:
+    """Возвращает вакансии с оплатой >= min_salary (в рублях)."""
+    result: List[Dict] = []
+    for vac in raw_vacancies:
+        salary = vac.get("salary") or {}
+        currency = salary.get("currency")
+        amount = salary.get("from") or salary.get("to")
+        if currency == "RUR" and isinstance(amount, (int, float)) and amount >= min_salary:
+            result.append({"title": vac.get("name", ""), "url": vac.get("alternate_url", "")})
+    return result

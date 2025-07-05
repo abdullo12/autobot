@@ -1,39 +1,66 @@
-"""Entry point for the bot and FastAPI application."""
+# hhbot/main.py
 
 import logging
-import threading
-import asyncio
-from fastapi import FastAPI, HTTPException, Query
-from .auth import exchange_code_for_token
-from .config import settings
-from .bot import build_bot
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
+import threading
+
+from fastapi import FastAPI, HTTPException
+from hhbot.config import settings
+from hhbot.auth import exchange_code_for_token
+from hhbot.bot import build_bot  # ваш модуль, где создаётся Updater/Dispatcher
+
+log = logging.getLogger(__name__)
 app = FastAPI()
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+_bot_instance = None  # глобально хранит ваш бот
 
 
 @app.get("/callback")
-async def callback(code: str = Query(...), state: int = Query(...)):
+async def callback(code: str, state: int):
+    """
+    Обработчик OAuth-callback от HH.
+    При успехе возвращаем {"status":"ok","msg": "..."},
+    при ошибке — HTTP 500 с деталями.
+    """
     try:
-        await exchange_code_for_token(code, state)
-        return {"status": "ok", "msg": "Профиль успешно привязан"}
+        msg = await exchange_code_for_token(code, state)
+        return {"status": "ok", "msg": msg}
     except Exception as e:
-        logger.error("Ошибка при обмене code->token: %s", e)
+        log.error("Ошибка при обмене code->token:", exc_info=e)
         raise HTTPException(status_code=500, detail="Ошибка привязки профиля")
 
 
-def main() -> None:
-    bot_app = build_bot()
+@app.on_event("startup")
+def startup_bot():
+    """
+    Запускаем Telegram-бота в фоне: создаём поток,
+    чтобы .start_polling() не блокировал Uvicorn.
+    """
+    global _bot_instance
+    _bot_instance = build_bot()
+    thread = threading.Thread(target=_bot_instance.start_polling, daemon=True)
+    thread.start()
+    log.info("✅ Telegram-бот запущен в отдельном потоке")
 
-    def run_bot() -> None:
-        bot_app.run_polling()
 
-    threading.Thread(target=run_bot, daemon=True).start()
-
-    import uvicorn
-    uvicorn.run(app, host=settings.server_host, port=settings.server_port)
+@app.on_event("shutdown")
+def shutdown_bot():
+    """
+    При завершении приложения корректно останавливаем polling.
+    """
+    global _bot_instance
+    if _bot_instance and hasattr(_bot_instance, "stop_polling"):
+        _bot_instance.stop_polling()
+        log.info("🛑 Telegram-бот остановлен")
 
 
 if __name__ == "__main__":
-    main()
+    import uvicorn
+
+    uvicorn.run(
+        "hhbot.main:app",
+        host="0.0.0.0",
+        port=settings.server_port,
+        reload=True,
+        log_level="info",
+    )
