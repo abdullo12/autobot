@@ -1,10 +1,8 @@
 fastapi
 uvicorn
-httpx
+requests
+python-telegram-bot==20.7
 python-dotenv
-sqlalchemy>=1.4
-asyncpg
-aiosqlite
+pydantic
 pytest
 pytest-asyncio
-respx
