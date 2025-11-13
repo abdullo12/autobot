@@ -22,7 +22,7 @@ async def exchange_code_for_token(code: str, chat_id: int) -> str:
     Сохраняем полученные токены в tokens[chat_id].
     Возвращаем сообщение для пользователя.
     """
-    url = "https://api.hh.ru/oauth/token"
+    url = "https://hh.ru/oauth/token"  # Исправлено: убрали api.
     auth = (settings.hh_client_id, settings.hh_client_secret)
     data = {
         "grant_type":    "authorization_code",
